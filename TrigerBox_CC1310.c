@@ -492,11 +492,10 @@ const uint_least8_t Display_count = 0;
  *       reduce memory usage.
  */
 GPIO_PinConfig gpioPinConfigs[] = {
-    /* Input pins */
-
     /* Output pins */
     CC1310_LAUNCHXL_PIN_BLED | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_HIGH | GPIO_CFG_OUT_STR_HIGH, /* LED_BLUE */
-
+    /* Input pins */
+    CC1310_LAUNCHXL_Triger1_IN | GPIO_CFG_IN_PU | GPIO_CFG_IN_INT_RISING,
 };
 
 /*
@@ -507,7 +506,6 @@ GPIO_PinConfig gpioPinConfigs[] = {
  *       reduce memory usage (if placed at end of gpioPinConfigs array).
  */
 GPIO_CallbackFxn gpioCallbackFunctions[] = {
-    NULL,
     NULL,
     NULL,
 };

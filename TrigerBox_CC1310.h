@@ -97,8 +97,9 @@ extern const PIN_Config BoardGpioInitTable[];
 #define CC1310_LAUNCHXL_UART_RX               IOID_1          /* RXD */
 #define CC1310_LAUNCHXL_UART_TX               IOID_2          /* TXD */
 
-//测试版本
-#define CC1310_LAUNCHXL_Triger0_IN            IOID_3
+#if (Triger == 1)
+#define CC1310_LAUNCHXL_Triger1_IN            IOID_3
+#endif
 
 /*!
  *  @brief  Initialize the general board specific settings
@@ -257,6 +258,7 @@ typedef enum CC1310_LAUNCHXL_TRNGName {
  */
 typedef enum CC1310_LAUNCHXL_GPIOName {
     CC1310_PIN_BLED = 0,
+    CC1310_Triger1_IN,
     CC1310_LAUNCHXL_GPIO_SPI_FLASH_CS,
     CC1310_LAUNCHXL_GPIOCOUNT
 } CC1310_LAUNCHXL_GPIOName;

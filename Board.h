@@ -75,7 +75,7 @@ extern "C" {
 #define Board_DIO21             CC1310_LAUNCHXL_DIO21
 #define Board_DIO22             CC1310_LAUNCHXL_DIO22
 
-#define Board_GPIO_TRIGER0_IN   CC1310_Triger0_IN
+#define Board_GPIO_TRIGER1_IN   CC1310_Triger1_IN
 #define Board_GPIO_LED_BLUE     CC1310_PIN_BLED
 
 #define Board_GPTIMER0A         CC1310_LAUNCHXL_GPTIMER0A

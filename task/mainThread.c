@@ -77,13 +77,6 @@
 sem_t EventSend;
 Display_Handle display = NULL;
 
-/* 运行时配置 */
-PIN_Config pinTable[] =
-{
-    CC1310_LAUNCHXL_Triger0_IN | PIN_INPUT_EN | PIN_IRQ_POSEDGE,
-    PIN_TERMINATE
-};
-
 /********************************************************************************
  *  LOCAL VARIABLES
  */
@@ -93,55 +86,36 @@ static RF_Handle rfHandle;
 static PIN_Handle RATPinHandle;
 static PIN_State RATPinState;
 
-static uint8_t eventtype = 0xaa;
-
-/********************************************************************************
- *  TYPEDEFs
- */
-typedef struct
-{
-    uint32_t reserved:2;  // unused
-    uint32_t inputMode:2; // 0: rising, 1: falling, 2: both edges
-    uint32_t reserved2:4; // unused
-    uint32_t source:5;    // 22: RFC_GPI0, 23: RFC_GPI1
-} ExternalTrigger;
+static uint8_t eventtype;
+static uint32_t txTimestamp;
 
 /********************************************************************************
  *  EXTERNAL VARIABLES
  */
+static void RFRAT_Config();
 
 /********************************************************************************
  *  Callback
  */
+static void TrigerHandle(uint_least8_t index){
 
+    // Set a time in the near future (2ms)
+    txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(10);
+    // 编码事件
+    eventtype = 0x01;
+    // 射频发送
+    RFRAT_Config();
+
+
+}
 
 /********************************************************************************
  *  LOCAL FUNCTIONS
  */
 static void RF_Config(){
 
-    RATPinHandle = PIN_open(&RATPinState, pinTable);
-    if (RATPinHandle == NULL)
-        while(1);
-
     RF_Params rfParams;
     RF_Params_init(&rfParams);
-
-    // Set the trigger configuration
-    ExternalTrigger triggerConfig =
-    {
-        .inputMode = 1,       // falling edge
-        .source = 22          // Use RFC_GPI0
-    };
-    RF_cmdPropTx.startTrigger.triggerType = TRIG_NOW;
-   // RF_cmdPropTx.startTrigger.triggerType = TRIG_EXTERNAL;
-   // RF_cmdPropTx.startTime = *((uint32_t*)&triggerConfig);
-
-    RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = &eventtype;
-
-    // Route a physical pin to the internal RFC_GPI0 signal.
-    PINCC26XX_setMux(RATPinHandle, CC1310_LAUNCHXL_Triger0_IN, PINCC26XX_MUX_RFC_GPI0);
 
     rfHandle = RF_open(&rfObject, &RF_prop, (RF_RadioSetup*)&RF_cmdPropRadioDivSetup, &rfParams);
 
@@ -151,6 +125,10 @@ static void RF_Config(){
 
 static void RFRAT_Config(){
 
+    RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
+    RF_cmdPropTx.startTime = txTimestamp;
+    RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
+    RF_cmdPropTx.pPkt = &eventtype;
 
 }
 
@@ -177,9 +155,14 @@ void *mainThread(void *arg0)
 
     /* Initialize RF Core */
     RF_Config();
-    RFRAT_Config(); // triger tx when rat capture rising edge
 
-    Display_printf(display, 0, 0, "\r\TrigerBox cc1310 ready!\r\n");
+    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
+
+    #if (Triger == 1)
+    /* Register interrupt for the Board_GPIO_TRIGER1_IN (trigger) */
+    GPIO_setCallback(Board_GPIO_TRIGER1_IN, TrigerHandle);
+    GPIO_enableInt(Board_GPIO_TRIGER1_IN);
+    #endif
 
     /* led on to indicate the system is ready! */
     GPIO_write(Board_GPIO_LED_BLUE,CC1310_LAUNCHXL_PIN_LED_ON);
@@ -246,7 +229,5 @@ void *mainThread(void *arg0)
                 }
 
                 GPIO_toggle(Board_GPIO_LED_BLUE);
-                sleep(2);
-
     }
 }
