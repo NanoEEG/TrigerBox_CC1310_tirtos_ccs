@@ -86,8 +86,8 @@ static RF_Handle rfHandle;
 static PIN_Handle RATPinHandle;
 static PIN_State RATPinState;
 
-static uint8_t eventtype;
-static uint32_t txTimestamp;
+uint8_t eventtype;
+uint32_t txTimestamp;
 
 /********************************************************************************
  *  EXTERNAL VARIABLES
@@ -100,12 +100,13 @@ static void RFRAT_Config();
 static void TrigerHandle(uint_least8_t index){
 
     // Set a time in the near future (2ms)
-    txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(10);
+    txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
     // 编码事件
     eventtype = 0x01;
     // 射频发送
     RFRAT_Config();
 
+    sem_post(&EventSend);
 
 }
 
@@ -168,7 +169,7 @@ void *mainThread(void *arg0)
     GPIO_write(Board_GPIO_LED_BLUE,CC1310_LAUNCHXL_PIN_LED_ON);
 
     while (1) {
-
+        sem_wait(&EventSend);
         /* Send packet */
         RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
                                                    RF_PriorityNormal, NULL, 0);
