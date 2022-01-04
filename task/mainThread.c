@@ -99,11 +99,11 @@ static void RFRAT_Config();
  */
 static void TrigerHandle(uint_least8_t index){
 
-    // Set a time in the near future (2ms)
+    // 读取RAT当前值，指定5ms之后发送
     txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
     // 编码事件
     eventtype = 0x01;
-    // 射频发送
+    // 发送射频发送命令
     RFRAT_Config();
 
     sem_post(&EventSend);
