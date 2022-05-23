@@ -70,6 +70,8 @@
 /* Packet TX Configuration */
 #define PAYLOAD_LENGTH      1
 
+#define MAX_NUM_RX_BYTES    1000   // Maximum RX bytes to receive in one go
+#define MAX_NUM_TX_BYTES    1000
 
 /********************************************************************************
  *  GLOBAL VARIABLES
@@ -83,8 +85,12 @@ Display_Handle display = NULL;
 static RF_Object rfObject;
 static RF_Handle rfHandle;
 
-static PIN_Handle RATPinHandle;
-static PIN_State RATPinState;
+//static PIN_Handle RATPinHandle;
+//static PIN_State RATPinState;
+
+uint8_t wantedRxBytes;            // Number of bytes received so far
+uint8_t rxBuf[MAX_NUM_RX_BYTES];   // Receive buffer
+uint8_t txBuf[MAX_NUM_TX_BYTES];    // Transmit buffer
 
 uint8_t eventtype;
 uint32_t txTimestamp;
@@ -97,18 +103,48 @@ static void RFRAT_Config();
 /********************************************************************************
  *  Callback
  */
-static void TrigerHandle(uint_least8_t index){
+//static void TrigerHandle(uint_least8_t index){
+//
+//    // 读取RAT当前值，指定5ms之后发送
+//    txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
+//    // 编码事件
+//    eventtype = 0x01;
+//    // 发送射频发送命令
+//    RFRAT_Config();
+//
+//    sem_post(&EventSend);
+//
+//}
 
+static void eventSave (UART_Handle handle, void *rxBuf, size_t size){
     // 读取RAT当前值，指定5ms之后发送
     txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
-    // 编码事件
-    eventtype = 0x01;
-    // 发送射频发送命令
-    RFRAT_Config();
-
-    sem_post(&EventSend);
-
+    // Make sure we received all expected bytes
+    if (size == wantedRxBytes) {
+        // Copy bytes from RX buffer to TX buffer
+       size_t i;
+       for( i= 0; i < size; i++){
+           txBuf[i] = ((uint8_t*)rxBuf)[i];
+       }
+       GPIO_toggle(Board_GPIO_LED_BLUE);
+//        Echo the bytes received back to transmitter
+//       UART_write(handle, &txTimestamp, sizeof(txTimestamp));
+       sem_post(&EventSend);
+       // Start another read, with size the same as it was during first call to
+       // UART_read()
+//       UART_read(handle, rxBuf, wantedRxBytes);
+    }
+    else {
+        while(1);
+        // Handle error or call to UART_readCancel()
+    }
 }
+
+//static void writeCallback(UART_Handle handle, void *txBuf, size_t count){
+////    UART_write(handle, txBuf, count);
+//    UART_read(handle, rxBuf, wantedRxBytes);
+//}
+
 
 /********************************************************************************
  *  LOCAL FUNCTIONS
@@ -129,8 +165,32 @@ static void RFRAT_Config(){
     RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
     RF_cmdPropTx.startTime = txTimestamp;
     RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = &eventtype;
+    RF_cmdPropTx.pPkt = txBuf;
 
+}
+
+static UART_Handle Uart_open()
+{
+    UART_Handle uart;
+    UART_Params params;
+    UART_init();
+    /* Create a UART with data processing off. */
+    UART_Params_init(&params);
+    params.baudRate = 115200;
+    params.readMode = UART_MODE_CALLBACK;
+    params.readDataMode = UART_DATA_BINARY;
+    params.readCallback = eventSave;
+//    params.writeMode = UART_MODE_CALLBACK;
+    params.writeDataMode = UART_DATA_BINARY;
+//    params.writeCallback = writeCallback;
+
+    uart = UART_open(Board_UART0, &params);
+
+    if (uart == NULL) {
+        /* UART_open() failed */
+        while (1);
+    }
+    return uart;
 }
 
 
@@ -140,36 +200,45 @@ static void RFRAT_Config(){
 void *mainThread(void *arg0)
 {
 
+    UART_Handle handle;
     /* Call driver init functions */
     GPIO_init();
     Display_init();
 
     /* Initialize display */
-    display = Display_open(Display_Type_UART,NULL); //TODO display输出有bug
+    display = Display_open(Display_Type_HOST,NULL); //TODO display输出有bug
     if (display == NULL) {
         /* UART_open() failed */
         while (1);
     }
 
+    handle = Uart_open();
     /* Initialize semaphore */
-    sem_init(&EventSend, 0, 0);
+    sem_init(&EventSend, 0, 0);//信号量是每次释放完都会刷新吗？
 
     /* Initialize RF Core */
     RF_Config();
 
     Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
 
-    #if (Triger == 1)
-    /* Register interrupt for the Board_GPIO_TRIGER1_IN (trigger) */
-    GPIO_setCallback(Board_GPIO_TRIGER1_IN, TrigerHandle);
-    GPIO_enableInt(Board_GPIO_TRIGER1_IN);
-    #endif
+    wantedRxBytes = 1;
+    UART_read(handle, rxBuf, wantedRxBytes);
+
+//    #if (Triger == 1)
+//    /* Register interrupt for the Board_GPIO_TRIGER1_IN (trigger) */
+//    GPIO_setCallback(Board_GPIO_TRIGER1_IN, TrigerHandle);
+//    GPIO_enableInt(Board_GPIO_TRIGER1_IN);
+//    #endif
 
     /* led on to indicate the system is ready! */
     GPIO_write(Board_GPIO_LED_BLUE,CC1310_LAUNCHXL_PIN_LED_ON);
 
     while (1) {
         sem_wait(&EventSend);
+        UART_read(handle, rxBuf, wantedRxBytes);
+        // 发送射频发送命令
+        RFRAT_Config();
+
         /* Send packet */
         RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
                                                    RF_PriorityNormal, NULL, 0);
@@ -229,6 +298,6 @@ void *mainThread(void *arg0)
                         while(1);
                 }
 
-                GPIO_toggle(Board_GPIO_LED_BLUE);
+
     }
 }
