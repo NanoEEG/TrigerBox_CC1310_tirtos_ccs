@@ -165,7 +165,7 @@ static void RFRAT_Config(){
     RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
     RF_cmdPropTx.startTime = txTimestamp;
     RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = txBuf;
+    RF_cmdPropTx.pPkt = rxBuf;
 
 }
 
