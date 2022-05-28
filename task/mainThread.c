@@ -119,6 +119,7 @@ static void RFRAT_Config();
 static void eventSave (UART_Handle handle, void *rxBuf, size_t size){
     // 读取RAT当前值，指定5ms之后发送
     txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
+    UART_write(handle, rxBuf, size);
     // Make sure we received all expected bytes
     if (size == wantedRxBytes) {
         // Copy bytes from RX buffer to TX buffer
