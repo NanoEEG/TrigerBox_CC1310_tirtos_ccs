@@ -166,7 +166,7 @@ static void RFRAT_Config(){
     RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
     RF_cmdPropTx.startTime = txTimestamp;
     RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = rxBuf;
+    RF_cmdPropTx.pPkt = 0x00;
 
 }
 
@@ -204,14 +204,14 @@ void *mainThread(void *arg0)
     UART_Handle handle;
     /* Call driver init functions */
     GPIO_init();
-    Display_init();
-
-    /* Initialize display */
-    display = Display_open(Display_Type_HOST,NULL); //TODO display输出有bug
-    if (display == NULL) {
-        /* UART_open() failed */
-        while (1);
-    }
+//    Display_init();
+//
+//    /* Initialize display */
+//    display = Display_open(Display_Type_HOST,NULL); //TODO display输出有bug
+//    if (display == NULL) {
+//        /* UART_open() failed */
+//        while (1);
+//    }
 
     handle = Uart_open();
     /* Initialize semaphore */
@@ -220,7 +220,7 @@ void *mainThread(void *arg0)
     /* Initialize RF Core */
     RF_Config();
 
-    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
+//    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
 
     wantedRxBytes = 1;
     UART_read(handle, rxBuf, wantedRxBytes);
