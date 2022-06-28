@@ -73,6 +73,9 @@
 #define MAX_NUM_RX_BYTES    1000   // Maximum RX bytes to receive in one go
 #define MAX_NUM_TX_BYTES    1000
 
+#define PACKET_INTERVAL     500000  /* Set packet interval to 500000us or 500ms */
+
+
 /********************************************************************************
  *  GLOBAL VARIABLES
  */
@@ -98,7 +101,6 @@ uint32_t txTimestamp;
 /********************************************************************************
  *  EXTERNAL VARIABLES
  */
-static void RFRAT_Config();
 
 /********************************************************************************
  *  Callback
@@ -116,24 +118,20 @@ static void RFRAT_Config();
 //
 //}
 
-static void eventSave (UART_Handle handle, void *rxBuf, size_t size){
-    // 读取RAT当前值，指定5ms之后发送
+static void eventSave (UART_Handle handle, void *rxBuf, size_t size)
+{
+    /* 读取RAT当前值，指定5ms之后发送  */
     txTimestamp = RF_getCurrentTime() + RF_convertMsToRatTicks(5);
-    UART_write(handle, rxBuf, size);
-    // Make sure we received all expected bytes
+    /* Make sure we received all expected bytes这里注释掉了，所以通过串口接收到的数据没有经过校验，其实是有风险的 */
     if (size == wantedRxBytes) {
-        // Copy bytes from RX buffer to TX buffer
-       size_t i;
-       for( i= 0; i < size; i++){
-           txBuf[i] = ((uint8_t*)rxBuf)[i];
-       }
-       GPIO_toggle(Board_GPIO_LED_BLUE);
-//        Echo the bytes received back to transmitter
-//       UART_write(handle, &txTimestamp, sizeof(txTimestamp));
-       sem_post(&EventSend);
-       // Start another read, with size the same as it was during first call to
-       // UART_read()
-//       UART_read(handle, rxBuf, wantedRxBytes);
+    /* Copy bytes from RX buffer to TX buffer */
+    size_t i;
+    for( i= 0; i <= size; i++){
+        txBuf[i] = ((uint8_t*)rxBuf)[i];
+    }
+    UART_write(handle, txBuf, 1);
+    GPIO_toggle(Board_GPIO_LED_BLUE);
+    sem_post(&EventSend);
     }
     else {
         while(1);
@@ -141,17 +139,10 @@ static void eventSave (UART_Handle handle, void *rxBuf, size_t size){
     }
 }
 
-//static void writeCallback(UART_Handle handle, void *txBuf, size_t count){
-////    UART_write(handle, txBuf, count);
-//    UART_read(handle, rxBuf, wantedRxBytes);
-//}
-
-
 /********************************************************************************
  *  LOCAL FUNCTIONS
  */
 static void RF_Config(){
-
     RF_Params rfParams;
     RF_Params_init(&rfParams);
 
@@ -166,7 +157,7 @@ static void RFRAT_Config(){
     RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
     RF_cmdPropTx.startTime = txTimestamp;
     RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = 0x00;
+    RF_cmdPropTx.pPkt = txBuf;
 
 }
 
@@ -178,7 +169,7 @@ static UART_Handle Uart_open()
     /* Create a UART with data processing off. */
     UART_Params_init(&params);
     params.baudRate = 115200;
-    params.readMode = UART_MODE_CALLBACK;
+    params.readMode = UART_MODE_CALLBACK;//UART_MODE_CALLBACK||UART_MODE_BLOCKING
     params.readDataMode = UART_DATA_BINARY;
     params.readCallback = eventSave;
 //    params.writeMode = UART_MODE_CALLBACK;
@@ -215,16 +206,14 @@ void *mainThread(void *arg0)
 
     handle = Uart_open();
     /* Initialize semaphore */
-    sem_init(&EventSend, 0, 0);//信号量是每次释放完都会刷新吗？
-
+    sem_init(&EventSend, 0, 0);
     /* Initialize RF Core */
     RF_Config();
-
+    RFRAT_Config();//TODO:这里配置了射频传输的内容，传输时间并不是通过地址幅值的，当传输时间改变时是否会改变这里的值
 //    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
 
     wantedRxBytes = 1;
-    UART_read(handle, rxBuf, wantedRxBytes);
-
+//    /* 8-3编码器触发标签 */
 //    #if (Triger == 1)
 //    /* Register interrupt for the Board_GPIO_TRIGER1_IN (trigger) */
 //    GPIO_setCallback(Board_GPIO_TRIGER1_IN, TrigerHandle);
@@ -235,70 +224,87 @@ void *mainThread(void *arg0)
     GPIO_write(Board_GPIO_LED_BLUE,CC1310_LAUNCHXL_PIN_LED_ON);
 
     while (1) {
+        UART_read(handle, rxBuf, 1);
+//        UART_write(handle, rxBuf, 1); /*这里时怀疑串口以回调模式读取数据会影响射频的发送，故改成了串口阻塞模式*/
+//        GPIO_toggle(Board_GPIO_LED_BLUE);
         sem_wait(&EventSend);
-        UART_read(handle, rxBuf, wantedRxBytes);
-        // 发送射频发送命令
-        RFRAT_Config();
+        /* 发送射频发送命令 */
+//        /* Create packet with incrementing sequence number and random payload */
+//        packet[0] = (uint8_t)(seqNumber >> 8);
+//        packet[1] = (uint8_t)(seqNumber++);
+//        uint8_t i;
+//        for (i = 2; i < PAYLOAD_LENGTH; i++)
+//        {
+//            packet[i] = rand();
+//        }
 
-        /* Send packet */
-        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
-                                                   RF_PriorityNormal, NULL, 0);
-
-                switch(terminationReason)
-                {
-                    case RF_EventLastCmdDone:
-                        // A stand-alone radio operation command or the last radio
-                        // operation command in a chain finished.
-                        break;
-                    case RF_EventCmdCancelled:
-                        // Command cancelled before it was started; it can be caused
-                    // by RF_cancelCmd() or RF_flushCmd().
-                        break;
-                    case RF_EventCmdAborted:
-                        // Abrupt command termination caused by RF_cancelCmd() or
-                        // RF_flushCmd().
-                        break;
-                    case RF_EventCmdStopped:
-                        // Graceful command termination caused by RF_cancelCmd() or
-                        // RF_flushCmd().
-                        break;
-                    default:
-                        // Uncaught error event
-                        while(1);
-                }
-
-                uint32_t cmdStatus = ((volatile RF_Op*)&RF_cmdPropTx)->status;
-                switch(cmdStatus)
-                {
-                    case PROP_DONE_OK:
-                        // Packet transmitted successfully
-                        break;
-                    case PROP_DONE_STOPPED:
-                        // received CMD_STOP while transmitting packet and finished
-                        // transmitting packet
-                        break;
-                    case PROP_DONE_ABORT:
-                        // Received CMD_ABORT while transmitting packet
-                        break;
-                    case PROP_ERROR_PAR:
-                        // Observed illegal parameter
-                        break;
-                    case PROP_ERROR_NO_SETUP:
-                        // Command sent without setting up the radio in a supported
-                        // mode using CMD_PROP_RADIO_SETUP or CMD_RADIO_SETUP
-                        break;
-                    case PROP_ERROR_NO_FS:
-                        // Command sent without the synthesizer being programmed
-                        break;
-                    case PROP_ERROR_TXUNF:
-                        // TX underflow observed during operation
-                        break;
-                    default:
-                        // Uncaught error event - these could come from the
-                        // pool of states defined in rf_mailbox.h
-                        while(1);
-                }
-
-
+//        /* Send packet */
+//        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
+//                                                   RF_PriorityNormal, NULL, 0);
+//
+//        switch(terminationReason)
+//        {
+//            case RF_EventLastCmdDone:
+//                // A stand-alone radio operation command or the last radio
+//                // operation command in a chain finished.
+//                break;
+//            case RF_EventCmdCancelled:
+//                // Command cancelled before it was started; it can be caused
+//            // by RF_cancelCmd() or RF_flushCmd().
+//                break;
+//            case RF_EventCmdAborted:
+//                // Abrupt command termination caused by RF_cancelCmd() or
+//                // RF_flushCmd().
+//                break;
+//            case RF_EventCmdStopped:
+//                // Graceful command termination caused by RF_cancelCmd() or
+//                // RF_flushCmd().
+//                break;
+//            default:
+//                // Uncaught error event
+//                while(1);
+//        }
+//
+//        uint32_t cmdStatus = ((volatile RF_Op*)&RF_cmdPropTx)->status;
+//        switch(cmdStatus)
+//        {
+//            case PROP_DONE_OK:
+//                // Packet transmitted successfully
+//                break;
+//            case PROP_DONE_STOPPED:
+//                // received CMD_STOP while transmitting packet and finished
+//                // transmitting packet
+//                break;
+//            case PROP_DONE_ABORT:
+//                // Received CMD_ABORT while transmitting packet
+//                break;
+//            case PROP_ERROR_PAR:
+//                // Observed illegal parameter
+//                break;
+//            case PROP_ERROR_NO_SETUP:
+//                // Command sent without setting up the radio in a supported
+//                // mode using CMD_PROP_RADIO_SETUP or CMD_RADIO_SETUP
+//                break;
+//            case PROP_ERROR_NO_FS:
+//                // Command sent without the synthesizer being programmed
+//                break;
+//            case PROP_ERROR_TXUNF:
+//                // TX underflow observed during operation
+//                break;
+//            default:
+//                // Uncaught error event - these could come from the
+//                // pool of states defined in rf_mailbox.h
+//                while(1);
+//        }
+//    /* Power down the radio */
+//    RF_yield(rfHandle);
+//
+//    #ifdef POWER_MEASUREMENT
+//    /* Sleep for PACKET_INTERVAL s */
+//    sleep(PACKET_INTERVAL);
+//    #else
+//    /* Sleep for PACKET_INTERVAL us */
+//    usleep(PACKET_INTERVAL);
+//    #endif
     }
 }

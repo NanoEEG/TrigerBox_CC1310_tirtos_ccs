@@ -495,7 +495,7 @@ GPIO_PinConfig gpioPinConfigs[] = {
     /* Output pins */
     CC1310_LAUNCHXL_PIN_BLED | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_HIGH | GPIO_CFG_OUT_STR_HIGH, /* LED_BLUE */
     /* Input pins */
-    CC1310_LAUNCHXL_Triger1_IN | GPIO_CFG_IN_PD | GPIO_CFG_IN_INT_RISING,
+//    CC1310_LAUNCHXL_Triger1_IN | GPIO_CFG_IN_PD | GPIO_CFG_IN_INT_RISING,
 };
 
 /*

@@ -4,10 +4,10 @@
 
 SHELL = cmd.exe
 
-CG_TOOL_ROOT := D:/CCS11.2.0.00007_win64/CCS/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS
+CG_TOOL_ROOT := D:/CCS10.4.0.00006_win64/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS
 
-GEN_OPTS__FLAG := --cmd_file="D:/CCSWorkSpace/tirtos_builds_CC1310_LAUNCHXL_release_ccs/Debug/configPkg/compiler.opt" 
-GEN_CMDS__FLAG := -l"D:/CCSWorkSpace/tirtos_builds_CC1310_LAUNCHXL_release_ccs/Debug/configPkg/linker.cmd" 
+GEN_OPTS__FLAG := 
+GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
 "./TrigerBox_CC1310.obj" \
@@ -155,21 +155,18 @@ BIN_OUTPUTS__QUOTED += \
 all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@$(MAKE) --no-print-directory -Onone "TrigerBox_CC1310_tirtos_ccs.out"
 
-dependents:
-	-cd D:/CCSWorkSpace/tirtos_builds_CC1310_LAUNCHXL_release_ccs/Debug && $(MAKE) all
-
 # Tool invocations
-TrigerBox_CC1310_tirtos_ccs.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS) D:/CCSWorkSpace/tirtos_builds_CC1310_LAUNCHXL_release_ccs/Debug/tirtos_builds_CC1310_LAUNCHXL_release_ccs.lib
+TrigerBox_CC1310_tirtos_ccs.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"D:/CCS11.2.0.00007_win64/CCS/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl" -mv7M3 --code_state=16 --float_support=vfplib -me --define=DeviceFamily_CC13X0 -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on -z -m"TrigerBox_CC1310_tirtos_ccs.map" -i"C:/ti/simplelink_cc13x0_sdk_4_20_01_03/source" -i"C:/ti/simplelink_cc13x0_sdk_4_20_01_03/kernel/tirtos/packages" -i"D:/CCS11.2.0.00007_win64/CCS/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/lib" --diag_wrap=off --display_error_number --warn_sections --xml_link_info="TrigerBox_CC1310_tirtos_ccs_linkInfo.xml" --rom_model -o "TrigerBox_CC1310_tirtos_ccs.out" $(ORDERED_OBJS)
+	"D:/CCS10.4.0.00006_win64/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armcl" -mv7M3 --code_state=16 --float_support=vfplib -me --define=DeviceFamily_CC13X0 -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on -z -m"TrigerBox_CC1310_tirtos_ccs.map" -i"/source" -i"/kernel/tirtos/packages" -i"D:/CCS10.4.0.00006_win64/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/lib" --diag_wrap=off --display_error_number --warn_sections --xml_link_info="TrigerBox_CC1310_tirtos_ccs_linkInfo.xml" --rom_model -o "TrigerBox_CC1310_tirtos_ccs.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 TrigerBox_CC1310_tirtos_ccs.hex: $(EXE_OUTPUTS)
 	@echo 'Building secondary target: "$@"'
 	@echo 'Invoking: Arm Hex Utility'
-	"D:/CCS11.2.0.00007_win64/CCS/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armhex" --diag_wrap=off -o "TrigerBox_CC1310_tirtos_ccs.hex" $(EXE_OUTPUTS__QUOTED)
+	"D:/CCS10.4.0.00006_win64/ccs/tools/compiler/ti-cgt-arm_20.2.5.LTS/bin/armhex" --diag_wrap=off -o "TrigerBox_CC1310_tirtos_ccs.hex" $(EXE_OUTPUTS__QUOTED)
 	@echo 'Finished building secondary target: "$@"'
 	@echo ' '
 
@@ -183,7 +180,6 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
-D:/CCSWorkSpace/tirtos_builds_CC1310_LAUNCHXL_release_ccs/Debug/tirtos_builds_CC1310_LAUNCHXL_release_ccs.lib:
 
 -include ../makefile.targets
 

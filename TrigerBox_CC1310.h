@@ -74,32 +74,32 @@ extern const PIN_Config BoardGpioInitTable[];
 #define CC1310_LAUNCHXL_DIO30_ANALOG          IOID_30
 
 /* Digital IOs */
-#define CC1310_LAUNCHXL_DIO0                  IOID_0
-#define CC1310_LAUNCHXL_DIO1                  IOID_1
-#define CC1310_LAUNCHXL_DIO12                 IOID_12
-#define CC1310_LAUNCHXL_DIO15                 IOID_15
-#define CC1310_LAUNCHXL_DIO16_TDO             IOID_16
-#define CC1310_LAUNCHXL_DIO17_TDI             IOID_17
-#define CC1310_LAUNCHXL_DIO21                 IOID_21
-#define CC1310_LAUNCHXL_DIO22                 IOID_22
+#define CC1310_LAUNCHXL_DIO0                  PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO1                  PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO12                 PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO15                 PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO16_TDO             PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO17_TDI             PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO21                 PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_DIO22                 PIN_UNASSIGNED
 
 
 /* I2C */
-#define CC1310_LAUNCHXL_I2C0_SCL0             IOID_9
-#define CC1310_LAUNCHXL_I2C0_SDA0             IOID_8
+#define CC1310_LAUNCHXL_I2C0_SCL0             PIN_UNASSIGNED
+#define CC1310_LAUNCHXL_I2C0_SDA0             PIN_UNASSIGNED
 
 /* LEDs */
-#define CC1310_LAUNCHXL_PIN_LED_ON            0
-#define CC1310_LAUNCHXL_PIN_LED_OFF           1
+#define CC1310_LAUNCHXL_PIN_LED_ON            1
+#define CC1310_LAUNCHXL_PIN_LED_OFF           0
 #define CC1310_LAUNCHXL_PIN_BLED              IOID_0
 
 /* UART Board */
 #define CC1310_LAUNCHXL_UART_RX               IOID_1          /* RXD */
 #define CC1310_LAUNCHXL_UART_TX               IOID_2          /* TXD */
 
-#if (Triger == 1)
-#define CC1310_LAUNCHXL_Triger1_IN            IOID_3
-#endif
+//#if (Triger == 1)
+//#define CC1310_LAUNCHXL_Triger1_IN            IOID_3
+//#endif
 
 /*!
  *  @brief  Initialize the general board specific settings
@@ -258,7 +258,7 @@ typedef enum CC1310_LAUNCHXL_TRNGName {
  */
 typedef enum CC1310_LAUNCHXL_GPIOName {
     CC1310_PIN_BLED = 0,
-    CC1310_Triger1_IN,
+//    CC1310_Triger1_IN,
     CC1310_LAUNCHXL_GPIO_SPI_FLASH_CS,
     CC1310_LAUNCHXL_GPIOCOUNT
 } CC1310_LAUNCHXL_GPIOName;
