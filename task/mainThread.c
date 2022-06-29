@@ -75,7 +75,6 @@
 
 #define PACKET_INTERVAL     500000  /* Set packet interval to 500000us or 500ms */
 
-
 /********************************************************************************
  *  GLOBAL VARIABLES
  */
@@ -88,6 +87,8 @@ Display_Handle display = NULL;
 static RF_Object rfObject;
 static RF_Handle rfHandle;
 
+static uint16_t seqNumber;
+
 //static PIN_Handle RATPinHandle;
 //static PIN_State RATPinState;
 
@@ -95,8 +96,12 @@ uint8_t wantedRxBytes;            // Number of bytes received so far
 uint8_t rxBuf[MAX_NUM_RX_BYTES];   // Receive buffer
 uint8_t txBuf[MAX_NUM_TX_BYTES];    // Transmit buffer
 
+static uint8_t packet[PAYLOAD_LENGTH];
+
 uint8_t eventtype;
 uint32_t txTimestamp;
+/* 记录串口写函数是否正常返回 */
+size_t size;
 
 /********************************************************************************
  *  EXTERNAL VARIABLES
@@ -128,9 +133,8 @@ static void eventSave (UART_Handle handle, void *rxBuf, size_t size)
     size_t i;
     for( i= 0; i <= size; i++){
         txBuf[i] = ((uint8_t*)rxBuf)[i];
+        packet[i] = ((uint8_t*)rxBuf)[i];
     }
-    UART_write(handle, txBuf, 1);
-    GPIO_toggle(Board_GPIO_LED_BLUE);
     sem_post(&EventSend);
     }
     else {
@@ -154,10 +158,10 @@ static void RF_Config(){
 
 static void RFRAT_Config(){
 
-    RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;
+    RF_cmdPropTx.startTrigger.triggerType = TRIG_ABSTIME;//TRIG_NOW//TRIG_ABSTIME
     RF_cmdPropTx.startTime = txTimestamp;
     RF_cmdPropTx.pktLen = PAYLOAD_LENGTH;
-    RF_cmdPropTx.pPkt = txBuf;
+    RF_cmdPropTx.pPkt = packet;
 
 }
 
@@ -207,11 +211,10 @@ void *mainThread(void *arg0)
     handle = Uart_open();
     /* Initialize semaphore */
     sem_init(&EventSend, 0, 0);
+//    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
     /* Initialize RF Core */
     RF_Config();
-    RFRAT_Config();//TODO:这里配置了射频传输的内容，传输时间并不是通过地址幅值的，当传输时间改变时是否会改变这里的值
-//    Display_printf(display, 0, 0, "\r TrigerBox cc1310 ready!\r\n");
-
+    /* 规定串口传输的字节大小 */
     wantedRxBytes = 1;
 //    /* 8-3编码器触发标签 */
 //    #if (Triger == 1)
@@ -228,8 +231,16 @@ void *mainThread(void *arg0)
 //        UART_write(handle, rxBuf, 1); /*这里时怀疑串口以回调模式读取数据会影响射频的发送，故改成了串口阻塞模式*/
 //        GPIO_toggle(Board_GPIO_LED_BLUE);
         sem_wait(&EventSend);
+
+        size = UART_write(handle, txBuf, 1);
+        /* 若串口写函数返回不正常则进入死循环 */
+        while(size != wantedRxBytes);
+        /* 若串口读写任务都完成，则反转led */
+        GPIO_toggle(Board_GPIO_LED_BLUE);
+        /* 配置射频发送模式的参数 */
+        RFRAT_Config();
         /* 发送射频发送命令 */
-//        /* Create packet with incrementing sequence number and random payload */
+        /* Create packet with incrementing sequence number and random payload */
 //        packet[0] = (uint8_t)(seqNumber >> 8);
 //        packet[1] = (uint8_t)(seqNumber++);
 //        uint8_t i;
@@ -238,73 +249,73 @@ void *mainThread(void *arg0)
 //            packet[i] = rand();
 //        }
 
-//        /* Send packet */
-//        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
-//                                                   RF_PriorityNormal, NULL, 0);
-//
-//        switch(terminationReason)
-//        {
-//            case RF_EventLastCmdDone:
-//                // A stand-alone radio operation command or the last radio
-//                // operation command in a chain finished.
-//                break;
-//            case RF_EventCmdCancelled:
-//                // Command cancelled before it was started; it can be caused
-//            // by RF_cancelCmd() or RF_flushCmd().
-//                break;
-//            case RF_EventCmdAborted:
-//                // Abrupt command termination caused by RF_cancelCmd() or
-//                // RF_flushCmd().
-//                break;
-//            case RF_EventCmdStopped:
-//                // Graceful command termination caused by RF_cancelCmd() or
-//                // RF_flushCmd().
-//                break;
-//            default:
-//                // Uncaught error event
-//                while(1);
-//        }
-//
-//        uint32_t cmdStatus = ((volatile RF_Op*)&RF_cmdPropTx)->status;
-//        switch(cmdStatus)
-//        {
-//            case PROP_DONE_OK:
-//                // Packet transmitted successfully
-//                break;
-//            case PROP_DONE_STOPPED:
-//                // received CMD_STOP while transmitting packet and finished
-//                // transmitting packet
-//                break;
-//            case PROP_DONE_ABORT:
-//                // Received CMD_ABORT while transmitting packet
-//                break;
-//            case PROP_ERROR_PAR:
-//                // Observed illegal parameter
-//                break;
-//            case PROP_ERROR_NO_SETUP:
-//                // Command sent without setting up the radio in a supported
-//                // mode using CMD_PROP_RADIO_SETUP or CMD_RADIO_SETUP
-//                break;
-//            case PROP_ERROR_NO_FS:
-//                // Command sent without the synthesizer being programmed
-//                break;
-//            case PROP_ERROR_TXUNF:
-//                // TX underflow observed during operation
-//                break;
-//            default:
-//                // Uncaught error event - these could come from the
-//                // pool of states defined in rf_mailbox.h
-//                while(1);
-//        }
-//    /* Power down the radio */
-//    RF_yield(rfHandle);
-//
-//    #ifdef POWER_MEASUREMENT
-//    /* Sleep for PACKET_INTERVAL s */
-//    sleep(PACKET_INTERVAL);
-//    #else
-//    /* Sleep for PACKET_INTERVAL us */
-//    usleep(PACKET_INTERVAL);
-//    #endif
+        /* Send packet */
+        RF_EventMask terminationReason = RF_runCmd(rfHandle, (RF_Op*)&RF_cmdPropTx,
+                                                   RF_PriorityNormal, NULL, 0);
+
+        switch(terminationReason)
+        {
+            case RF_EventLastCmdDone:
+                // A stand-alone radio operation command or the last radio
+                // operation command in a chain finished.
+                break;
+            case RF_EventCmdCancelled:
+                // Command cancelled before it was started; it can be caused
+            // by RF_cancelCmd() or RF_flushCmd().
+                break;
+            case RF_EventCmdAborted:
+                // Abrupt command termination caused by RF_cancelCmd() or
+                // RF_flushCmd().
+                break;
+            case RF_EventCmdStopped:
+                // Graceful command termination caused by RF_cancelCmd() or
+                // RF_flushCmd().
+                break;
+            default:
+                // Uncaught error event
+                while(1);
+        }
+
+        uint32_t cmdStatus = ((volatile RF_Op*)&RF_cmdPropTx)->status;
+        switch(cmdStatus)
+        {
+            case PROP_DONE_OK:
+                // Packet transmitted successfully
+                break;
+            case PROP_DONE_STOPPED:
+                // received CMD_STOP while transmitting packet and finished
+                // transmitting packet
+                break;
+            case PROP_DONE_ABORT:
+                // Received CMD_ABORT while transmitting packet
+                break;
+            case PROP_ERROR_PAR:
+                // Observed illegal parameter
+                break;
+            case PROP_ERROR_NO_SETUP:
+                // Command sent without setting up the radio in a supported
+                // mode using CMD_PROP_RADIO_SETUP or CMD_RADIO_SETUP
+                break;
+            case PROP_ERROR_NO_FS:
+                // Command sent without the synthesizer being programmed
+                break;
+            case PROP_ERROR_TXUNF:
+                // TX underflow observed during operation
+                break;
+            default:
+                // Uncaught error event - these could come from the
+                // pool of states defined in rf_mailbox.h
+                while(1);
+        }
+    /* Power down the radio */
+    RF_yield(rfHandle);
+
+    #ifdef POWER_MEASUREMENT
+    /* Sleep for PACKET_INTERVAL s */
+    sleep(PACKET_INTERVAL);
+    #else
+    /* Sleep for PACKET_INTERVAL us */
+    usleep(PACKET_INTERVAL);
+    #endif
     }
 }

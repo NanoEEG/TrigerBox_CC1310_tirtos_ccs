@@ -182,7 +182,7 @@ rfc_CMD_PROP_TX_t RF_cmdPropTx =
     .pktConf.bFsOff = 0x0,
     .pktConf.bUseCrc = 0x1,
     .pktConf.bVarLen = 0x1,
-    .pktLen = 0x14,
+    .pktLen = 0x1,
     .syncWord = 0x930B51DE,
     .pPkt = 0 // INSERT APPLICABLE POINTER: (uint8_t*)&xxx
 };
